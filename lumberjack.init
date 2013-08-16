@@ -1,0 +1,94 @@
+#!/bin/sh
+#
+# lumberjack - this script starts and stops the lumberjack daemon
+#
+# chkconfig:   - 85 15 
+# description:  Lumberjack is a log shipper for lumberjack
+# processname: /opt/lumberjack/bin/lumberjack
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+name=Lumberjack
+lumberjack="/opt/lumberjack/bin/lumberjack"
+lumberjackd="/opt/lumberjack/bin/lumberjack"
+prog=$(basename $lumberjack)
+lumberjack_opts='-config /opt/lumberjack/lumberjack.conf -spool-size 100 -log-to-syslog'
+
+[ -f /etc/sysconfig/lumberjack ] && . /etc/sysconfig/lumberjack
+
+lockfile=/var/lock/subsys/lumberjack
+
+start() {
+    [ -x $lumberjack ] || exit 5
+    echo -n $"Starting $name: "
+    daemon nohup $lumberjack $lumberjack_opts >/dev/null 2>&1 &
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && touch $lockfile
+    return $retval
+}
+
+stop() {
+    echo -n $"Stopping $name: "
+    killproc $prog -QUIT
+    retval=$?
+    echo
+    [ $retval -eq 0 ] && rm -f $lockfile
+    return $retval
+}
+
+restart() {
+    stop
+    start
+}
+
+reload() {
+    echo -n $"Reloading $name: "
+    killproc $lumberjack -HUP
+    RETVAL=$?
+    echo
+}
+
+force_reload() {
+    restart
+}
+
+rh_status() {
+    status $lumberjack
+}
+
+rh_status_q() {
+    rh_status >/dev/null 2>&1
+}
+
+case "$1" in
+    start)
+        rh_status_q && exit 0
+        $1
+        ;;
+    stop)
+        rh_status_q || exit 0
+        $1
+        ;;
+    restart|configtest)
+        $1
+        ;;
+    reload)
+        rh_status_q || exit 7
+        $1
+        ;;
+    force-reload)
+        force_reload
+        ;;
+    status)
+        rh_status
+        ;;
+    condrestart|try-restart)
+        rh_status_q || exit 0
+      ;;
+    *)
+        echo $"Usage: $0 {start|stop|status|restart|condrestart|try-restart|reload|force-reload}"
+        exit 2
+esac
+
